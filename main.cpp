@@ -24,23 +24,56 @@
  * SOFTWARE.
  */
 
-//#include <util/delay.h>
+#include <util/delay.h>
 
 #include <avr/io.h>
-//#include <avr/interrupt.h>
+#include <avr/interrupt.h>
 //#include <avr/pgmspace.h>
-//#include <avr/eeprom.h> 
+//#include <avr/eeprom.h>
 
 #include <stdint.h>
 
 #include "bitop.h"
 
+static volatile uint8_t v = 0;
+
+static const uint8_t min = 50;
+static const uint8_t max = 240;
+
+ISR(ADC_vect) {
+	v = ADCH;
+	if (v < min) {
+		v = min;
+	}
+	if (v > max) {
+		v = max;
+	}
+}
+
 int main() {
 	// init
-	
-	
-	// enable interrupts
-	//sei();
+	SETBIT(DDRB, PB1);
 
-	for (;;);
+	// positive for trimmer
+	SETBIT(DDRA, PA0);
+	SETBIT(PORTA, PA0);
+
+	// adc1
+	ADMUXA = 1;
+	ADCSRA = BIT(ADEN) | BIT(ADSC) | BIT(ADATE) | BIT(ADIE) | BIT(ADPS2) | BIT(ADPS1) | BIT(ADPS0);
+	ADCSRB = BIT(ADLAR);
+
+	// enable interrupts
+	sei();
+
+	for (;;) {
+		for (uint16_t i = 0; i < 2000; i++) {
+			if (i < v) {
+				SETBIT(PORTB, PB1);
+			} else {
+				CLEARBIT(PORTB, PB1);
+			}
+			_delay_us(8);
+		}
+	}
 }
